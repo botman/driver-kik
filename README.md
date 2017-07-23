@@ -2,6 +2,11 @@
 
 BotMan driver to connect Kik with [BotMan](https://github.com/botman/botman)
 
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/botman/driver-kik.svg?style=flat-square)](https://packagist.org/packages/botman/driver-kik)
+[![Build Status](https://travis-ci.org/botman/driver-kik.svg?branch=master)](https://travis-ci.org/botman/driver-kik)
+[![codecov](https://codecov.io/gh/botman/driver-kik/branch/master/graph/badge.svg)](https://codecov.io/gh/botman/driver-kik)
+
+
 ## Contributing
 
 Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
