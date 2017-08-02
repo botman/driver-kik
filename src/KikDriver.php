@@ -12,8 +12,11 @@ use BotMan\BotMan\Messages\Attachments\Video;
 use BotMan\BotMan\Messages\Outgoing\Question;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use BotMan\BotMan\Messages\Attachments\Attachment;
+use Symfony\Component\HttpFoundation\ParameterBag;
 use BotMan\BotMan\Messages\Incoming\IncomingMessage;
 use BotMan\BotMan\Messages\Outgoing\OutgoingMessage;
+use BotMan\Drivers\Kik\Exceptions\KikAttachmentException;
 
 class KikDriver extends HttpDriver
 {
@@ -27,23 +30,10 @@ class KikDriver extends HttpDriver
      */
     public function buildPayload(Request $request)
     {
-        $this->payload = $request->request;
+        $this->payload = new ParameterBag(json_decode($request->getContent(), true));
         $this->headers = $request->headers->all();
         $this->event = Collection::make($this->payload->get('messages'));
         $this->config = Collection::make($this->config->get('kik', []));
-    }
-
-    /**
-     * Low-level method to perform driver specific API requests.
-     *
-     * @param string $endpoint
-     * @param array $parameters
-     * @param \BotMan\BotMan\Messages\Incoming\IncomingMessage $matchingMessage
-     * @return void
-     */
-    public function sendRequest($endpoint, array $parameters, IncomingMessage $matchingMessage)
-    {
-        // TODO: Implement sendRequest() method.
     }
 
     /**
@@ -53,7 +43,14 @@ class KikDriver extends HttpDriver
      */
     public function matchesRequest()
     {
-        return isset($this->headers['x-kik-username']) && Collection::make($this->event->first())->has('body');
+        $matches = $this->event->filter(function ($message) {
+            return array_key_exists('body', $message) ||
+            array_key_exists('picUrl', $message) ||
+            array_key_exists('stickerUrl', $message) ||
+            array_key_exists('videoUrl', $message);
+        })->isNotEmpty();
+
+        return $matches && ! empty($this->headers['x-kik-username']);
     }
 
     /**
@@ -64,7 +61,26 @@ class KikDriver extends HttpDriver
     public function getMessages()
     {
         return $this->event->map(function ($message) {
-            return new IncomingMessage($message['body'], $message['from'], $message['chatId'], $message);
+            if (isset($message['picUrl'])) {
+                $image = new Image($message['picUrl'], $message);
+                $image->title($message['attribution']['name']);
+
+                $incomingMessage = new IncomingMessage(Image::PATTERN, $message['from'], $message['chatId'], $message);
+                $incomingMessage->setImages([$image]);
+            } elseif (isset($message['stickerUrl'])) {
+                $sticker = new Image($message['stickerUrl'], $message);
+                $sticker->title($message['attribution']['name']);
+
+                $incomingMessage = new IncomingMessage(Image::PATTERN, $message['from'], $message['chatId'], $message);
+                $incomingMessage->setImages([$sticker]);
+            } elseif (isset($message['videoUrl'])) {
+                $incomingMessage = new IncomingMessage(Video::PATTERN, $message['from'], $message['chatId'], $message);
+                $incomingMessage->setVideos([new Video($message['videoUrl'], $message)]);
+            } else {
+                $incomingMessage = new IncomingMessage($message['body'], $message['from'], $message['chatId'], $message);
+            }
+
+            return $incomingMessage;
         })->toArray();
     }
 
@@ -95,9 +111,9 @@ class KikDriver extends HttpDriver
             'Content-Type:application/json',
             'Authorization:Basic '.$this->getRequestCredentials(),
         ]);
-        $profileData = json_decode($response->getContent());
+        $profileData = json_decode($response->getContent(), true);
 
-        return new User($matchingMessage->getSender(), $profileData->firstName, $profileData->lastName, $matchingMessage->getSender());
+        return new User($matchingMessage->getSender(), $profileData['firstName'], $profileData['lastName'], $matchingMessage->getSender(), $profileData);
     }
 
     /**
@@ -141,6 +157,8 @@ class KikDriver extends HttpDriver
                     })->toArray(),
                 ],
             ];
+        } else {
+            return [[]];
         }
     }
 
@@ -149,6 +167,7 @@ class KikDriver extends HttpDriver
      * @param \BotMan\BotMan\Messages\Incoming\IncomingMessage $matchingMessage
      * @param array $additionalParameters
      * @return array
+     * @throws KikAttachmentException
      */
     public function buildServicePayload($message, $matchingMessage, $additionalParameters = [])
     {
@@ -165,6 +184,8 @@ class KikDriver extends HttpDriver
             } elseif ($attachment instanceof Video) {
                 $payload['videoUrl'] = $attachment->getUrl();
                 $payload['type'] = 'video';
+            } elseif ($attachment instanceof Attachment) {
+                throw new KikAttachmentException('Unsupported attachment type');
             } else {
                 $payload['body'] = $message->getText();
                 $payload['type'] = 'text';
@@ -199,7 +220,7 @@ class KikDriver extends HttpDriver
 
     /**
      * @param \BotMan\BotMan\Messages\Incoming\IncomingMessage $matchingMessage
-     * @return void
+     * @return Response
      */
     public function types(IncomingMessage $matchingMessage)
     {
@@ -213,5 +234,23 @@ class KikDriver extends HttpDriver
                 ],
             ],
         ]);
+    }
+
+    /**
+     * Low-level method to perform driver specific API requests.
+     *
+     * @param string $endpoint
+     * @param array $parameters
+     * @param \BotMan\BotMan\Messages\Incoming\IncomingMessage $matchingMessage
+     * @return Response
+     */
+    public function sendRequest($endpoint, array $parameters, IncomingMessage $matchingMessage)
+    {
+        $payload = array_merge_recursive([
+            'to' => $matchingMessage->getSender(),
+            'chatId' => $matchingMessage->getRecipient(),
+        ], $parameters);
+
+        return $this->sendPayload(['messages' => [$payload]]);
     }
 }
