@@ -179,15 +179,13 @@ class KikDriver extends HttpDriver
         if ($message instanceof OutgoingMessage) {
             $attachment = $message->getAttachment();
             if ($attachment instanceof Image) {
-
-	            if (strtolower(pathinfo($attachment->getUrl(), PATHINFO_EXTENSION)) === 'gif') {
-		            $payload['videoUrl'] = $attachment->getUrl();
-		            $payload['type'] = 'video';
-	            } else {
-		            $payload['picUrl'] = $attachment->getUrl();
-		            $payload['type'] = 'picture';
-	            }
-
+                if (strtolower(pathinfo($attachment->getUrl(), PATHINFO_EXTENSION)) === 'gif') {
+                    $payload['videoUrl'] = $attachment->getUrl();
+                    $payload['type'] = 'video';
+                } else {
+                    $payload['picUrl'] = $attachment->getUrl();
+                    $payload['type'] = 'picture';
+                }
             } elseif ($attachment instanceof Video) {
                 $payload['videoUrl'] = $attachment->getUrl();
                 $payload['type'] = 'video';
