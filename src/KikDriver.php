@@ -2,7 +2,12 @@
 
 namespace BotMan\Drivers\Kik;
 
+use BotMan\BotMan\Messages\Attachments\Audio;
+use BotMan\BotMan\Messages\Attachments\File;
+use BotMan\BotMan\Messages\Attachments\Location;
 use BotMan\BotMan\Users\User;
+use BotMan\Drivers\Kik\Exceptions\KikException;
+use BotMan\Drivers\Kik\Exceptions\UnsupportedAttachmentType;
 use Illuminate\Support\Collection;
 use BotMan\BotMan\Drivers\HttpDriver;
 use BotMan\BotMan\Interfaces\UserInterface;
@@ -100,11 +105,12 @@ class KikDriver extends HttpDriver
         return ! empty($this->config->get('username')) && ! empty($this->config->get('key'));
     }
 
-    /**
-     * Retrieve User information.
-     * @param \BotMan\BotMan\Messages\Incoming\IncomingMessage $matchingMessage
-     * @return UserInterface
-     */
+	/**
+	 * Retrieve User information.
+	 * @param \BotMan\BotMan\Messages\Incoming\IncomingMessage $matchingMessage
+	 * @return UserInterface
+	 * @throws KikException
+	 */
     public function getUser(IncomingMessage $matchingMessage)
     {
         $response = $this->http->get('https://api.kik.com/v1/user/'.$matchingMessage->getSender(), [], [
@@ -112,6 +118,10 @@ class KikDriver extends HttpDriver
             'Authorization:Basic '.$this->getRequestCredentials(),
         ]);
         $profileData = json_decode($response->getContent(), true);
+
+        if ($response->getStatusCode() != 200) {
+        	throw new KikException('Error getting user info: ' . $response->getContent());
+        }
 
         return new User($matchingMessage->getSender(), $profileData['firstName'], $profileData['lastName'], $matchingMessage->getSender(), $profileData);
     }
@@ -167,7 +177,7 @@ class KikDriver extends HttpDriver
      * @param \BotMan\BotMan\Messages\Incoming\IncomingMessage $matchingMessage
      * @param array $additionalParameters
      * @return array
-     * @throws KikAttachmentException
+     * @throws UnsupportedAttachmentType
      */
     public function buildServicePayload($message, $matchingMessage, $additionalParameters = [])
     {
@@ -189,8 +199,8 @@ class KikDriver extends HttpDriver
             } elseif ($attachment instanceof Video) {
                 $payload['videoUrl'] = $attachment->getUrl();
                 $payload['type'] = 'video';
-            } elseif ($attachment instanceof Attachment) {
-                throw new KikAttachmentException('Unsupported attachment type');
+            } elseif ($attachment instanceof Audio || $attachment instanceof Location || $attachment instanceof File) {
+                throw new UnsupportedAttachmentType('The '.get_class($attachment).' is not supported (currently: Image, Video)');
             } else {
                 $payload['body'] = $message->getText();
                 $payload['type'] = 'text';
