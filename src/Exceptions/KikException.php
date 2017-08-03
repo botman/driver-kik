@@ -2,8 +2,8 @@
 
 namespace BotMan\Drivers\Kik\Exceptions;
 
-use Exception;
+use BotMan\BotMan\Exceptions\Base\DriverException;
 
-class KikException extends Exception
+class KikException extends DriverException
 {
 }
