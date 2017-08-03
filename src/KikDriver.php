@@ -19,7 +19,7 @@ use BotMan\BotMan\Messages\Attachments\Location;
 use Symfony\Component\HttpFoundation\ParameterBag;
 use BotMan\BotMan\Messages\Incoming\IncomingMessage;
 use BotMan\BotMan\Messages\Outgoing\OutgoingMessage;
-use BotMan\Drivers\Kik\Exceptions\UnsupportedAttachmentType;
+use BotMan\Drivers\Kik\Exceptions\UnsupportedAttachmentException;
 
 class KikDriver extends HttpDriver
 {
@@ -175,7 +175,7 @@ class KikDriver extends HttpDriver
      * @param \BotMan\BotMan\Messages\Incoming\IncomingMessage $matchingMessage
      * @param array $additionalParameters
      * @return array
-     * @throws UnsupportedAttachmentType
+     * @throws UnsupportedAttachmentException
      */
     public function buildServicePayload($message, $matchingMessage, $additionalParameters = [])
     {
@@ -198,7 +198,7 @@ class KikDriver extends HttpDriver
                 $payload['videoUrl'] = $attachment->getUrl();
                 $payload['type'] = 'video';
             } elseif ($attachment instanceof Audio || $attachment instanceof Location || $attachment instanceof File) {
-                throw new UnsupportedAttachmentType('The '.get_class($attachment).' is not supported (currently: Image, Video)');
+                throw new UnsupportedAttachmentException('The '.get_class($attachment).' is not supported (currently: Image, Video)');
             } else {
                 $payload['body'] = $message->getText();
                 $payload['type'] = 'text';
