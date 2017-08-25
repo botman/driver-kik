@@ -1,4 +1,5 @@
 <?php
+
 namespace BotMan\Drivers\Kik\Extensions;
 
 use BotMan\BotMan\Interfaces\UserInterface;
