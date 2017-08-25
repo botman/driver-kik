@@ -2,9 +2,9 @@
 
 namespace BotMan\Drivers\Kik;
 
-use BotMan\BotMan\Users\User;
 use Illuminate\Support\Collection;
 use BotMan\BotMan\Drivers\HttpDriver;
+use BotMan\Drivers\Kik\Extensions\User;
 use BotMan\BotMan\Interfaces\UserInterface;
 use BotMan\BotMan\Messages\Incoming\Answer;
 use BotMan\BotMan\Messages\Attachments\File;
@@ -106,7 +106,7 @@ class KikDriver extends HttpDriver
     /**
      * Retrieve User information.
      * @param \BotMan\BotMan\Messages\Incoming\IncomingMessage $matchingMessage
-     * @return UserInterface
+     * @return User
      * @throws KikException
      */
     public function getUser(IncomingMessage $matchingMessage)

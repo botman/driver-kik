@@ -7,6 +7,7 @@ use BotMan\BotMan\Http\Curl;
 use PHPUnit_Framework_TestCase;
 use BotMan\Drivers\Kik\KikDriver;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class KikDriverTest extends PHPUnit_Framework_TestCase
 {
@@ -179,5 +180,60 @@ class KikDriverTest extends PHPUnit_Framework_TestCase
             ],
         ]);
         $this->assertSame('0ee6d46753bfa6ac2f089149959363f3f59ae62b10cba89cc426490ce38ea92d', $driver->getMessages()[0]->getRecipient());
+    }
+
+    /** @test */
+    public function it_returns_the_user()
+    {
+        $response = new Response('{
+    "firstName": "Joe",
+    "lastName": "User",
+    "profilePicUrl": "http://profilepics.kik.com/foobar.jpg",
+    "profilePicLastModified": 1439576628405,
+    "timezone": "America/Toronto"
+}');
+
+        $htmlInterface = m::mock(Curl::class);
+        $htmlInterface->shouldReceive('get')->with('https://api.kik.com/v1/user/laura', [], [
+            'Content-Type:application/json',
+            'Authorization:Basic Og==',
+        ])->andReturn($response);
+
+        $data = [
+            'messages' => [
+                [
+                    'chatId' => '0ee6d46753bfa6ac2f089149959363f3f59ae62b10cba89cc426490ce38ea92d',
+                    'id' => '0115efde-e54b-43d5-873a-5fef7adc69fd',
+                    'type' => 'text',
+                    'from' => 'laura',
+                    'participants' => ['laura'],
+                    'body' => 'Hi Marcel',
+                    'timestamp' => 1439576628405,
+                    'readReceiptRequested' => true,
+                    'mention' => null,
+                    'metadata' => null,
+                    'chatType' => 'direct',
+                ],
+            ],
+        ];
+
+        $request = m::mock(Request::class.'[getContent]');
+        $request->shouldReceive('getContent')->andReturn(json_encode($data));
+        if ($htmlInterface === null) {
+            $htmlInterface = m::mock(Curl::class);
+        }
+
+        $request->headers->add(['x-kik-username' => 'Sergio']);
+
+        $driver = new KikDriver($request, [], $htmlInterface);
+
+        $user = $driver->getUser($driver->getMessages()[0]);
+
+        $this->assertSame('laura', $user->getId());
+        $this->assertSame('Joe', $user->getFirstName());
+        $this->assertSame('User', $user->getLastName());
+        $this->assertSame('http://profilepics.kik.com/foobar.jpg', $user->getProfilePicUrl());
+        $this->assertSame('America/Toronto', $user->getTimezone());
+        $this->assertSame(1439576628405, $user->getProfilePicLastModified());
     }
 }
