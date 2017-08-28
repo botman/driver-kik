@@ -5,7 +5,6 @@ namespace BotMan\Drivers\Kik;
 use Illuminate\Support\Collection;
 use BotMan\BotMan\Drivers\HttpDriver;
 use BotMan\Drivers\Kik\Extensions\User;
-use BotMan\BotMan\Interfaces\UserInterface;
 use BotMan\BotMan\Messages\Incoming\Answer;
 use BotMan\BotMan\Messages\Attachments\File;
 use BotMan\BotMan\Messages\Attachments\Audio;
