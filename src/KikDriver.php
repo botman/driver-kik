@@ -32,7 +32,7 @@ class KikDriver extends HttpDriver
      */
     public function buildPayload(Request $request)
     {
-        $this->payload = new ParameterBag(json_decode($request->getContent(), true));
+        $this->payload = new ParameterBag(json_decode($request->getContent(), true) ?? []);
         $this->headers = $request->headers->all();
         $this->event = Collection::make($this->payload->get('messages'));
         $this->config = Collection::make($this->config->get('kik', []));
